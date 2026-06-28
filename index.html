@@ -221,10 +221,18 @@ main{max-width:680px;margin:0 auto;padding:32px 20px 60px}
 }
 
 /* ══════════════════════════════════════════
-   PDF EXPORT TEMPLATE (renderizado fora da tela
-   e convertido para PDF pelo html2pdf.js)
+   PDF EXPORT TEMPLATE (renderizado em um overlay
+   visível e convertido para PDF pelo html2pdf.js —
+   precisa estar "visível" para o html2canvas conseguir
+   capturar o conteúdo corretamente)
    ══════════════════════════════════════════ */
-#pdf-export{position:fixed;left:-9999px;top:0;z-index:-1}
+#pdf-export{position:fixed;inset:0;background:rgba(10,30,20,.6);z-index:99999;display:none;overflow:auto;padding:70px 16px 40px}
+#pdf-export.active{display:block}
+#pdf-export-banner{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px;z-index:2;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#pdf-export-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+#pdf-page-wrap{display:flex;justify-content:center}
+#pdf-page-wrap .pdf-page{box-shadow:0 10px 40px rgba(0,0,0,.3);border-radius:10px;overflow:hidden}
+
 .pdf-page{width:760px;background:#fff;font-family:'Segoe UI',Arial,sans-serif;color:var(--text);padding:4px}
 
 .pdf-header{background:linear-gradient(135deg,var(--gd),var(--gm));border-radius:16px;padding:30px 34px;margin-bottom:20px;color:#fff}
@@ -500,8 +508,14 @@ main{max-width:680px;margin:0 auto;padding:32px 20px 60px}
 
 </main>
 
-<!-- Container oculto usado apenas para gerar o PDF (fora da área visível) -->
-<div id="pdf-export"></div>
+<!-- Overlay usado apenas durante a geração do PDF -->
+<div id="pdf-export">
+  <div id="pdf-export-banner">
+    <span id="pdf-export-spinner"></span>
+    <span>Preparando seu PDF...</span>
+  </div>
+  <div id="pdf-page-wrap"></div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
@@ -1016,8 +1030,11 @@ function downloadPDF() {
   btn.innerHTML = '⏳ Gerando PDF...';
   btn.disabled = true;
 
-  const root = document.getElementById('pdf-export');
-  root.innerHTML = buildPdfHTML();
+  const overlay = document.getElementById('pdf-export');
+  const wrap = document.getElementById('pdf-page-wrap');
+  wrap.innerHTML = buildPdfHTML();
+  overlay.classList.add('active');
+  overlay.scrollTop = 0;
 
   const opt = {
     margin: [10, 8, 12, 8],
@@ -1027,16 +1044,26 @@ function downloadPDF() {
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
-  html2pdf().set(opt).from(root).save()
-    .catch(err => {
-      console.error(err);
-      alert('Não foi possível gerar o PDF agora. Tente novamente em alguns segundos.');
-    })
-    .finally(() => {
-      btn.innerHTML = originalLabel;
-      btn.disabled = false;
-      root.innerHTML = '';
+  function finish() {
+    overlay.classList.remove('active');
+    wrap.innerHTML = '';
+    btn.innerHTML = originalLabel;
+    btn.disabled = false;
+  }
+
+  // Espera dois frames para garantir que o navegador já pintou
+  // o conteúdo na tela antes do html2canvas capturá-lo.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      html2pdf().set(opt).from(wrap.firstElementChild).save()
+        .then(finish)
+        .catch(err => {
+          console.error(err);
+          alert('Não foi possível gerar o PDF agora. Tente novamente em alguns segundos.');
+          finish();
+        });
     });
+  });
 }
 
 // ══════════════════════════════════════════
