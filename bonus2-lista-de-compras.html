@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lista de Compras Inteligente · Protocolo Fibermaxxing</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --gd:#1B4332;--gm:#2D6A4F;--ga:#40916C;
+  --gl:#B7E4C7;--gp:#D8F3DC;--gb:#F0FFF4;
+  --gold:#C9A84C;--gold-l:#F0C040;
+  --orange:#E76F51;
+  --white:#fff;--off:#FAFDF8;
+  --text:#1A1A2E;--text-m:#3D405B;--text-l:#6B7280;
+  --border:#E0E0E0;--bg:#F8FDF5;--surface:#fff;
+  --radius:12px;
+}
+
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh}
+
+/* ── HEADER ── */
+header{
+  background:var(--gd);
+  padding:16px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.header-brand{display:flex;align-items:center;gap:10px}
+.header-logo{width:36px;height:36px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.header-text{line-height:1.2}
+.header-title{font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--gl)}
+.header-sub{font-size:10px;color:rgba(183,228,199,.6);letter-spacing:1px}
+.header-badge{background:rgba(201,168,76,.2);border:1px solid rgba(201,168,76,.4);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:700;color:var(--gold);letter-spacing:1px}
+
+/* ── MAIN LAYOUT ── */
+main{max-width:680px;margin:0 auto;padding:32px 20px 60px}
+
+/* ── STEP INDICATOR ── */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:32px}
+.step{display:flex;align-items:center;gap:8px;flex:1}
+.step-dot{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;
+  border:2px solid var(--border);background:var(--surface);color:var(--text-l);
+  transition:all .3s;
+}
+.step.active .step-dot{background:var(--gm);border-color:var(--gm);color:#fff}
+.step.done .step-dot{background:var(--ga);border-color:var(--ga);color:#fff}
+.step-label{font-size:11px;color:var(--text-l);font-weight:600;display:none}
+@media(min-width:480px){.step-label{display:block}}
+.step-line{flex:1;height:2px;background:var(--border);transition:background .3s;margin:0 4px}
+.step.done + .step .step-line,
+.step-line.done{background:var(--ga)}
+
+/* ── CARDS / PANELS ── */
+.panel{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:20px}
+.panel-header{background:var(--gb);padding:16px 20px;border-bottom:1px solid var(--gp);display:flex;align-items:center;gap:10px}
+.panel-icon{font-size:20px}
+.panel-title{font-size:15px;font-weight:700;color:var(--gm)}
+.panel-body{padding:20px}
+
+/* ── FORM ELEMENTS ── */
+.field-label{font-size:12px;font-weight:700;color:var(--text-m);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;display:block}
+.field-hint{font-size:11px;color:var(--text-l);margin-bottom:10px}
+
+/* Stepper input */
+.stepper{display:flex;align-items:center;gap:0;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;width:fit-content}
+.stepper-btn{width:38px;height:38px;border:none;background:var(--gb);color:var(--gm);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0}
+.stepper-btn:hover{background:var(--gp)}
+.stepper-val{width:52px;height:38px;border:none;border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);text-align:center;font-size:16px;font-weight:700;color:var(--text);background:var(--white)}
+
+/* People row */
+.people-row{display:flex;gap:20px;flex-wrap:wrap}
+.people-item{display:flex;flex-direction:column;gap:6px}
+.people-item .field-label{margin-bottom:0}
+
+/* Chips / toggles */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;
+  border:1.5px solid var(--border);background:var(--surface);color:var(--text-m);
+  cursor:pointer;transition:all .2s;user-select:none;
+}
+.chip:hover{border-color:var(--ga);color:var(--gm);background:var(--gb)}
+.chip.selected{border-color:var(--gm);background:var(--gm);color:#fff}
+.chip.selected-gold{border-color:var(--gold);background:var(--gold);color:var(--gd)}
+.chip.disabled{opacity:.4;pointer-events:none}
+
+/* Toggle switch */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info .tl{font-size:13px;font-weight:600;color:var(--text)}
+.toggle-info .ts{font-size:11px;color:var(--text-l)}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:12px;cursor:pointer;transition:background .2s}
+.toggle input:checked + .toggle-track{background:var(--gm)}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked + .toggle-track::after{transform:translateX(20px)}
+
+/* ── CTA BUTTON ── */
+.btn-primary{
+  width:100%;padding:16px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,var(--gm),var(--ga));
+  color:#fff;font-size:16px;font-weight:700;letter-spacing:.5px;
+  cursor:pointer;transition:all .2s;
+  box-shadow:0 4px 14px rgba(45,106,79,.3);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(45,106,79,.4)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.btn-secondary{
+  padding:10px 20px;border:1.5px solid var(--gm);border-radius:8px;
+  background:transparent;color:var(--gm);font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.btn-secondary:hover{background:var(--gb)}
+
+/* ── GENERATING SCREEN ── */
+#screen-generating{display:none;text-align:center;padding:60px 20px}
+.gen-spinner{width:64px;height:64px;border:4px solid var(--gp);border-top-color:var(--gm);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-title{font-size:20px;font-weight:700;color:var(--gm);margin-bottom:8px}
+.gen-sub{font-size:13px;color:var(--text-l)}
+
+/* ── LIST SCREEN ── */
+#screen-list{display:none}
+.list-header{background:linear-gradient(135deg,var(--gd),var(--gm));border-radius:var(--radius);padding:24px;margin-bottom:24px;position:relative;overflow:hidden}
+.list-header::after{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05)}
+.list-header-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.list-header-title{font-size:20px;font-weight:900;color:#fff;line-height:1.2}
+.list-header-sub{font-size:12px;color:var(--gl);opacity:.8;margin-top:4px}
+.list-header-recalc{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;transition:background .2s}
+.list-header-recalc:hover{background:rgba(255,255,255,.25)}
+.list-tags{display:flex;flex-wrap:wrap;gap:6px}
+.list-tag{background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px}
+.list-tag.gold{background:rgba(201,168,76,.3);color:var(--gold-l)}
+
+/* Category */
+.cat-block{margin-bottom:24px}
+.cat-header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;margin-bottom:2px;cursor:pointer;user-select:none}
+.cat-icon{font-size:20px;flex-shrink:0}
+.cat-name{font-size:14px;font-weight:700;color:var(--white)}
+.cat-count{margin-left:auto;font-size:11px;font-weight:700;background:rgba(255,255,255,.2);border-radius:10px;padding:2px 8px;color:#fff}
+.cat-toggle-icon{font-size:12px;color:rgba(255,255,255,.7);transition:transform .2s}
+.cat-block.collapsed .cat-toggle-icon{transform:rotate(-90deg)}
+
+.cat-items{border:1.5px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden}
+.cat-block.collapsed .cat-items{display:none}
+
+.item-row{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 16px;border-bottom:1px solid var(--border);
+  transition:background .15s;cursor:pointer;
+}
+.item-row:last-child{border-bottom:none}
+.item-row:hover{background:var(--gb)}
+.item-row.checked{background:var(--gb)}
+.item-check{
+  width:22px;height:22px;border-radius:6px;border:2px solid var(--border);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.item-row.checked .item-check{background:var(--ga);border-color:var(--ga)}
+.item-row.checked .item-check::after{content:'✓';color:#fff;font-size:13px;font-weight:700}
+.item-row.checked .item-name-text{text-decoration:line-through;color:var(--text-l)}
+.item-name-text{font-size:14px;color:var(--text);flex:1}
+.item-qty{font-size:12px;font-weight:700;color:var(--gm);background:var(--gb);border:1px solid var(--gp);border-radius:6px;padding:2px 8px;white-space:nowrap}
+.item-row.checked .item-qty{color:var(--text-l);background:transparent;border-color:var(--border)}
+
+/* Progress */
+.progress-bar-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px}
+.progress-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.progress-label{font-size:12px;font-weight:700;color:var(--text-m)}
+.progress-frac{font-size:13px;font-weight:700;color:var(--gm)}
+.progress-track{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gm),var(--gold));border-radius:4px;transition:width .4s}
+
+/* Action buttons */
+.action-row{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.action-btn{
+  flex:1;min-width:120px;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .2s;border:none;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.action-print{background:var(--gm);color:#fff}
+.action-print:hover{background:var(--gd)}
+.action-copy{background:var(--gb);color:var(--gm);border:1.5px solid var(--gp)}
+.action-copy:hover{background:var(--gp)}
+.action-reset{background:transparent;color:var(--text-l);border:1.5px solid var(--border)}
+.action-reset:hover{background:var(--bg);color:var(--text)}
+
+/* Footer */
+.list-footer{text-align:center;padding:20px;border-top:1px solid var(--border);margin-top:8px}
+.list-footer-text{font-size:11px;color:var(--text-l);line-height:1.6}
+.list-footer-name{font-size:13px;font-weight:700;color:var(--gm);margin-top:4px}
+
+/* ── SCREENS ── */
+#screen-form{display:block}
+.screen{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── PRINT ── */
+@media print{
+  header,#screen-form,#screen-generating,.action-row,.list-header-recalc{display:none!important}
+  #screen-list{display:block!important}
+  body{background:#fff}
+  .cat-block.collapsed .cat-items{display:block!important}
+  .item-row{break-inside:avoid}
+}
+
+@media(max-width:480px){
+  main{padding:20px 14px 50px}
+  .action-row{flex-direction:column}
+  .action-btn{min-width:unset}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="header-logo">🌿</div>
+    <div class="header-text">
+      <div class="header-title">LISTA DE COMPRAS INTELIGENTE</div>
+      <div class="header-sub">PROTOCOLO FIBERMAXXING · DRA. ISABELLA BIANCHI</div>
+    </div>
+  </div>
+  <div class="header-badge">BÔNUS 2</div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════ -->
+<!--         SCREEN: FORM              -->
+<!-- ══════════════════════════════════ -->
+<div id="screen-form" class="screen">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step1">
+      <div class="step-dot">1</div>
+      <span class="step-label">Família</span>
+    </div>
+    <div class="step-line" id="line1"></div>
+    <div class="step" id="step2">
+      <div class="step-dot">2</div>
+      <span class="step-label">Proteínas</span>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step" id="step3">
+      <div class="step-dot">3</div>
+      <span class="step-label">Preferências</span>
+    </div>
+    <div class="step-line" id="line3"></div>
+    <div class="step" id="step4">
+      <div class="step-dot">4</div>
+      <span class="step-label">Lista</span>
+    </div>
+  </div>
+
+  <!-- STEP 1: Família -->
+  <div id="form-step1">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-icon">👨‍👩‍👧</span>
+        <span class="panel-title">Quantas pessoas na família?</span>
+      </div>
+      <div class="panel-body">
+        <div class="people-row">
+          <div class="people-item">
+            <span class="field-label">Adultos</span>
+            <span class="field-hint">A partir de 12 anos</span>
+            <div class="stepper">
+              <button class="stepper-btn" onclick="change('adults',-1)">−</button>
+              <div class="stepper-val" id="val-adults">2</div>
+              <button class="stepper-btn" onclick="change('adults',1)">+</button>
+            </div>
+          </div>
+          <div class="people-item">
+            <span class="field-label">Crianças</span>
+            <span class="field-hint">Até 11 anos</span>
+            <div class="stepper">
+              <button class="stepper-btn" onclick="change('children',-1)">−</button>
+              <div class="stepper-val" id="val-children">0</div>
+              <button class="stepper-btn" onclick="change('children',1)">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:20px">
+          <span class="field-label">Orçamento semanal</span>
+          <div class="chips" style="margin-top:8px">
+            <div class="chip selected" data-group="budget" data-val="economico" onclick="selectChip(this,'budget')">💰 Econômico</div>
+            <div class="chip" data-group="budget" data-val="moderado" onclick="selectChip(this,'budget')">💳 Moderado</div>
+            <div class="chip" data-group="budget" data-val="livre" onclick="selectChip(this,'budget')">✨ Sem restrição</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="goStep(2)">Próximo →</button>
+  </div>
+
+  <!-- STEP 2: Proteínas -->
+  <div id="form-step2" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-icon">🥩</span>
+        <span class="panel-title">Quais proteínas a família consome?</span>
+      </div>
+      <div class="panel-body">
+        <span class="field-hint" style="margin-bottom:12px;display:block">Selecione todas as opções que se aplicam</span>
+
+        <!-- Vegano toggle especial -->
+        <div class="toggle-row" style="margin-bottom:12px">
+          <div class="toggle-info">
+            <div class="tl">🌱 Alimentação vegana</div>
+            <div class="ts">Substitui todas as proteínas animais por opções vegetais</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="toggle-vegan" onchange="toggleVegan(this)"/>
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+
+        <div id="protein-chips">
+          <span class="field-label" style="margin-bottom:10px;display:block">Proteínas animais</span>
+          <div class="chips" id="protein-options">
+            <div class="chip selected" data-val="frango" onclick="toggleProtein(this)">🍗 Frango</div>
+            <div class="chip selected" data-val="carne" onclick="toggleProtein(this)">🥩 Carne bovina</div>
+            <div class="chip" data-val="peixe" onclick="toggleProtein(this)">🐟 Peixe</div>
+            <div class="chip selected" data-val="ovo" onclick="toggleProtein(this)">🥚 Ovos</div>
+            <div class="chip" data-val="porco" onclick="toggleProtein(this)">🐷 Suíno</div>
+            <div class="chip selected" data-val="laticinios" onclick="toggleProtein(this)">🧀 Laticínios</div>
+          </div>
+          <div style="margin-top:16px">
+            <span class="field-label" style="margin-bottom:10px;display:block">Proteínas vegetais</span>
+            <div class="chips">
+              <div class="chip selected" data-val="leguminosas" onclick="toggleProtein(this)">🫘 Feijão / Lentilha</div>
+              <div class="chip" data-val="tofu" onclick="toggleProtein(this)">🌿 Tofu / Tempeh</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-secondary" onclick="goStep(1)">← Voltar</button>
+      <button class="btn-primary" onclick="goStep(3)" style="flex:1">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Preferências -->
+  <div id="form-step3" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-icon">⚙️</span>
+        <span class="panel-title">Restrições e preferências</span>
+      </div>
+      <div class="panel-body">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">🌾 Sem glúten</div>
+            <div class="ts">Remove trigo, centeio e cevada</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="tog-gluten"/><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">🥛 Sem lactose</div>
+            <div class="ts">Substitui leite e derivados por versões sem lactose</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="tog-lactose"/><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">🍬 Sem açúcar adicionado</div>
+            <div class="ts">Remove produtos com açúcar refinado</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="tog-sugar" checked/><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">⭐ Priorizar fibras prebióticas</div>
+            <div class="ts">Destaca alimentos do Protocolo Fibermaxxing</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="tog-fiber" checked/><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">🕐 Refeições rápidas</div>
+            <div class="ts">Prioriza alimentos de preparo fácil e rápido</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="tog-quick"/><div class="toggle-track"></div></label>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-secondary" onclick="goStep(2)">← Voltar</button>
+      <button class="btn-primary" onclick="generateList()" style="flex:1">✨ Gerar minha lista</button>
+    </div>
+  </div>
+
+</div><!-- /screen-form -->
+
+<!-- ══════════════════════════════════ -->
+<!--       SCREEN: GENERATING          -->
+<!-- ══════════════════════════════════ -->
+<div id="screen-generating">
+  <div class="gen-spinner"></div>
+  <div class="gen-title">Montando sua lista...</div>
+  <div class="gen-sub" id="gen-msg">Calculando quantidades para sua família</div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--         SCREEN: LIST              -->
+<!-- ══════════════════════════════════ -->
+<div id="screen-list" class="screen">
+
+  <div class="list-header">
+    <div class="list-header-top">
+      <div>
+        <div class="list-header-title">🛒 Lista da Semana</div>
+        <div class="list-header-sub" id="list-subtitle">Personalizada para sua família</div>
+      </div>
+      <button class="list-header-recalc" onclick="resetForm()">↩ Refazer</button>
+    </div>
+    <div class="list-tags" id="list-tags"></div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar-wrap">
+    <div class="progress-info">
+      <span class="progress-label">Itens no carrinho</span>
+      <span class="progress-frac" id="prog-frac">0 / 0</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="action-row">
+    <button class="action-btn action-print" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="action-btn action-copy" onclick="copyList()">📋 Copiar lista</button>
+    <button class="action-btn action-reset" onclick="resetForm()">↩ Nova lista</button>
+  </div>
+
+  <!-- Categories container -->
+  <div id="list-categories"></div>
+
+  <div class="list-footer">
+    <div class="list-footer-text">
+      Lista gerada com base no Protocolo Fibermaxxing · As quantidades são estimativas para 7 dias<br/>
+      Adapte conforme sua rotina e o que já tem em casa
+    </div>
+    <div class="list-footer-name">Dra. Isabella Bianchi · isabellabianchi.com.br</div>
+  </div>
+
+</div><!-- /screen-list -->
+
+</main>
+
+<script>
+// ══════════════════════════════════════════
+//              STATE
+// ══════════════════════════════════════════
+const state = {
+  adults: 2,
+  children: 0,
+  budget: 'economico',
+  proteins: ['frango','carne','ovo','laticinios','leguminosas'],
+  vegan: false,
+  noGluten: false,
+  noLactose: false,
+  noSugar: true,
+  fiberPriority: true,
+  quickMeals: false,
+};
+
+let currentStep = 1;
+let checked = new Set();
+
+// ══════════════════════════════════════════
+//              NAVIGATION
+// ══════════════════════════════════════════
+function goStep(n) {
+  document.getElementById(`form-step${currentStep}`).style.display = 'none';
+  currentStep = n;
+  document.getElementById(`form-step${n}`).style.display = 'block';
+  updateStepUI();
+  window.scrollTo(0, 0);
+}
+
+function updateStepUI() {
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById(`step${i}`);
+    el.classList.remove('active','done');
+    if (i < currentStep) el.classList.add('done');
+    else if (i === currentStep) el.classList.add('active');
+  });
+  [1,2,3].forEach(i => {
+    const el = document.getElementById(`line${i}`);
+    el.classList.toggle('done', i < currentStep);
+  });
+}
+
+// ══════════════════════════════════════════
+//              FORM CONTROLS
+// ══════════════════════════════════════════
+function change(field, delta) {
+  const min = field === 'adults' ? 1 : 0;
+  state[field] = Math.max(min, Math.min(10, state[field] + delta));
+  document.getElementById(`val-${field}`).textContent = state[field];
+}
+
+function selectChip(el, group) {
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state[group] = el.dataset.val;
+}
+
+function toggleProtein(el) {
+  const val = el.dataset.val;
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected');
+    state.proteins = state.proteins.filter(p => p !== val);
+  } else {
+    el.classList.add('selected');
+    state.proteins.push(val);
+  }
+}
+
+function toggleVegan(cb) {
+  state.vegan = cb.checked;
+  const chips = document.getElementById('protein-chips');
+  if (state.vegan) {
+    chips.style.opacity = '.4';
+    chips.style.pointerEvents = 'none';
+    state.proteins = ['leguminosas','tofu'];
+    state.noLactose = true;
+    document.getElementById('tog-lactose').checked = true;
+  } else {
+    chips.style.opacity = '1';
+    chips.style.pointerEvents = '';
+  }
+}
+
+// ══════════════════════════════════════════
+//              DATA ENGINE
+// ══════════════════════════════════════════
+
+// units = portions per adult per week; children count as 0.6
+function portions(base) {
+  const people = state.adults + state.children * 0.6;
+  const mult = state.budget === 'economico' ? 0.85 : state.budget === 'livre' ? 1.15 : 1;
+  return Math.round(base * people * mult);
+}
+
+function qty(n, unit) {
+  return `${n} ${unit}`;
+}
+
+function buildList() {
+  state.noGluten  = document.getElementById('tog-gluten').checked;
+  state.noLactose = document.getElementById('tog-lactose').checked;
+  state.noSugar   = document.getElementById('tog-sugar').checked;
+  state.fiberPriority = document.getElementById('tog-fiber').checked;
+  state.quickMeals = document.getElementById('tog-quick').checked;
+
+  const p = state.proteins;
+  const vegan = state.vegan;
+  const gl = state.noGluten;
+  const lac = state.noLactose;
+  const fiber = state.fiberPriority;
+  const quick = state.quickMeals;
+
+  const cats = [];
+
+  // ── 1. HORTIFRUTI ──
+  const hortifruti = [];
+
+  // Folhosas
+  hortifruti.push({n:'Alface (pé)', q:qty(portions(1.5),'unidades')});
+  hortifruti.push({n:'Rúcula', q:qty(portions(1),'maços')});
+  if (!quick) hortifruti.push({n:'Espinafre', q:qty(portions(1),'maços')});
+  hortifruti.push({n:'Couve', q:qty(portions(1),'maços')});
+
+  // Legumes essenciais
+  hortifruti.push({n:'Tomate', q:qty(portions(5),'unidades')});
+  hortifruti.push({n:'Cenoura', q:qty(portions(4),'unidades')});
+  hortifruti.push({n:'Abobrinha', q:qty(portions(2),'unidades')});
+  hortifruti.push({n:'Brócolis', q:qty(portions(1),'cabeça')});
+  hortifruti.push({n:'Chuchu', q:qty(portions(2),'unidades')});
+
+  // Fibras prebióticas — destaque
+  if (fiber) {
+    hortifruti.push({n:'🌿 Cebola', q:qty(portions(3),'unidades'), fiber:true});
+    hortifruti.push({n:'🌿 Alho', q:qty(portions(2),'cabeças'), fiber:true});
+    hortifruti.push({n:'🌿 Banana verde', q:qty(portions(3),'unidades'), fiber:true});
+  } else {
+    hortifruti.push({n:'Cebola', q:qty(portions(3),'unidades')});
+    hortifruti.push({n:'Alho', q:qty(portions(2),'cabeças')});
+  }
+
+  // Frutas
+  hortifruti.push({n:'Maçã', q:qty(portions(4),'unidades')});
+  hortifruti.push({n:'Banana', q:qty(portions(5),'unidades')});
+  hortifruti.push({n:'Kiwi', q:qty(portions(2),'unidades'), fiber:fiber});
+  if (fiber) hortifruti[hortifruti.length-1].n = '🌿 Kiwi';
+  hortifruti.push({n:'Limão', q:qty(portions(4),'unidades')});
+  if (!quick) hortifruti.push({n:'Abacate', q:qty(Math.max(1,Math.round(portions(0.5))),'unidades')});
+
+  cats.push({icon:'🥦', name:'Hortifruti', color:'#2D6A4F', bg:'#F0FFF4', items:hortifruti});
+
+  // ── 2. PROTEÍNAS ──
+  const prots = [];
+
+  if (p.includes('frango') && !vegan) {
+    const kg = (portions(0.15)).toFixed(1).replace('.',',');
+    prots.push({n:'Peito de frango', q:`${kg} kg`});
+    if (!quick) prots.push({n:'Coxa/sobrecoxa de frango', q:qty(portions(2),'unidades')});
+  }
+  if (p.includes('carne') && !vegan) {
+    prots.push({n:'Patinho moído', q:`${(portions(0.12)).toFixed(1).replace('.',',')} kg`});
+    if (state.budget !== 'economico') prots.push({n:'Filé / Alcatra', q:`${(portions(0.1)).toFixed(1).replace('.',',')} kg`});
+  }
+  if (p.includes('porco') && !vegan) {
+    prots.push({n:'Lombo suíno', q:`${(portions(0.1)).toFixed(1).replace('.',',')} kg`});
+  }
+  if (p.includes('peixe') && !vegan) {
+    prots.push({n:'Filé de tilápia', q:`${(portions(0.12)).toFixed(1).replace('.',',')} kg`});
+    if (state.budget !== 'economico') prots.push({n:'Salmão', q:`${(portions(0.08)).toFixed(1).replace('.',',')} kg`});
+    prots.push({n:'Atum em água (lata)', q:qty(portions(1),'latas')});
+  }
+  if (p.includes('ovo') && !vegan) {
+    prots.push({n:'Ovos caipiras', q:qty(portions(5),'unidades')});
+  }
+  if (p.includes('leguminosas')) {
+    prots.push({n:'Feijão carioca', q:`${(portions(0.15)).toFixed(1).replace('.',',')} kg`, fiber:fiber});
+    if (fiber) prots[prots.length-1].n = '🌿 Feijão carioca';
+    prots.push({n:'Lentilha', q:`${(portions(0.1)).toFixed(1).replace('.',',')} kg`, fiber:fiber});
+    if (fiber) prots[prots.length-1].n = '🌿 Lentilha';
+    if (vegan) prots.push({n:'Grão-de-bico', q:`${(portions(0.1)).toFixed(1).replace('.',',')} kg`});
+  }
+  if (p.includes('tofu') || vegan) {
+    prots.push({n:'Tofu firme', q:qty(portions(1),'pacotes (300g)')});
+  }
+
+  if (prots.length > 0)
+    cats.push({icon:'🥩', name:'Proteínas', color:'#BC4749', bg:'#FDF5F5', items:prots});
+
+  // ── 3. CEREAIS / CARBOIDRATOS ──
+  const cereais = [];
+
+  if (!gl) {
+    cereais.push({n:'Arroz branco', q:`${(portions(0.2)).toFixed(1).replace('.',',')} kg`});
+    if (fiber) {
+      cereais[cereais.length-1].n = '🌿 Arroz branco (cozinhe e esfrie para amido resistente)';
+      cereais[cereais.length-1].fiber = true;
+    }
+    if (state.budget !== 'economico') cereais.push({n:'Macarrão integral', q:qty(portions(1),'pacotes')});
+    else cereais.push({n:'Macarrão', q:qty(portions(1),'pacotes')});
+    cereais.push({n:'Tapioca (goma)', q:qty(portions(1),'pacotes')});
+  } else {
+    cereais.push({n:'Arroz branco (s/ glúten)', q:`${(portions(0.2)).toFixed(1).replace('.',',')} kg`});
+    cereais.push({n:'Macarrão de arroz', q:qty(portions(1),'pacotes')});
+    cereais.push({n:'Tapioca (goma)', q:qty(portions(1),'pacotes')});
+    cereais.push({n:'Polvilho azedo', q:'1 pacote'});
+  }
+  cereais.push({n:'🌿 Aveia em flocos', q:qty(portions(1),'pacotes (400g)'), fiber:true});
+  cereais.push({n:'Batata inglesa', q:`${(portions(0.3)).toFixed(1).replace('.',',')} kg`, fiber:fiber});
+  if (fiber) cereais[cereais.length-1].n = '🌿 Batata inglesa (ótima esfriada — amido resistente)';
+  cereais.push({n:'Batata-doce', q:qty(portions(2),'unidades')});
+
+  if (!gl) {
+    cereais.push({n:'Pão integral', q:qty(portions(1),'pacotes')});
+  } else {
+    cereais.push({n:'Pão s/ glúten', q:qty(portions(1),'pacotes')});
+  }
+
+  cats.push({icon:'🌾', name:'Cereais e Carboidratos', color:'#C9A84C', bg:'#FDFAF0', items:cereais});
+
+  // ── 4. LATICÍNIOS / SUBSTITUTOS ──
+  const latic = [];
+
+  if (!lac && !vegan) {
+    if (p.includes('laticinios')) {
+      latic.push({n:'Iogurte natural integral', q:qty(portions(2),'potes (170g)'), fiber:fiber});
+      if (fiber) latic[latic.length-1].n = '🌿 Iogurte natural integral (probiótico)';
+      latic.push({n:'Kefir', q:qty(portions(1),'frasco (1L)'), fiber:fiber});
+      if (fiber) latic[latic.length-1].n = '🌿 Kefir (probiótico poderoso)';
+      latic.push({n:'Queijo minas frescal', q:'1 unidade'});
+      latic.push({n:'Leite integral', q:qty(portions(1),'litros')});
+      if (state.budget !== 'economico') latic.push({n:'Iogurte grego natural', q:qty(portions(1),'potes')});
+    }
+  } else {
+    // Sem lactose ou vegano
+    latic.push({n:'Bebida vegetal de aveia', q:qty(portions(1),'litros')});
+    latic.push({n:'Bebida de amêndoas (s/ açúcar)', q:qty(portions(1),'litros')});
+    latic.push({n:'🌿 Iogurte de coco natural', q:qty(portions(1),'potes'), fiber:fiber});
+    if (fiber) {
+      latic.push({n:'🌿 Kefir de água', q:'1 frasco', fiber:true});
+    }
+  }
+
+  if (latic.length > 0)
+    cats.push({icon:'🥛', name:'Laticínios / Substitutos', color:'#4A90D9', bg:'#F0F7FF', items:latic});
+
+  // ── 5. ÓLEOS, SEMENTES E OLEAGINOSAS ──
+  const gorduras = [];
+  gorduras.push({n:'Azeite de oliva extravirgem', q:'1 frasco (500ml)'});
+  gorduras.push({n:'🌿 Chia', q:'1 pacote (200g)', fiber:fiber});
+  gorduras.push({n:'🌿 Linhaça dourada', q:'1 pacote (200g)', fiber:fiber});
+  gorduras.push({n:'Castanha-do-pará', q:'1 pacote (100g)'});
+  gorduras.push({n:'Amêndoas (s/ sal)', q:'1 pacote (100g)'});
+  if (state.budget !== 'economico') gorduras.push({n:'Pasta de amendoim integral', q:'1 pote'});
+  else gorduras.push({n:'Amendoim torrado (s/ sal)', q:'1 pacote'});
+
+  cats.push({icon:'🫒', name:'Óleos, Sementes e Oleaginosas', color:'#8E6B3E', bg:'#FDF8F0', items:gorduras});
+
+  // ── 6. TEMPEROS E CONDIMENTOS ──
+  const temperos = [];
+  temperos.push({n:'🌿 Cúrcuma (açafrão-da-terra)', q:'1 sachê ou pote', fiber:false});
+  temperos[temperos.length-1].fiber = fiber;
+  temperos.push({n:'🌿 Gengibre fresco', q:qty(portions(1),'pedaços'), fiber:fiber});
+  temperos.push({n:'Pimenta-do-reino', q:'1 pote'});
+  temperos.push({n:'Canela em pó', q:'1 pote'});
+  temperos.push({n:'Orégano', q:'1 pote'});
+  temperos.push({n:'Alecrim', q:'1 pote ou maço'});
+  temperos.push({n:'Sal rosa / integral', q:'1 embalagem'});
+  if (!state.noSugar) temperos.push({n:'Mel puro', q:'1 pote pequeno'});
+
+  cats.push({icon:'🫙', name:'Temperos e Condimentos', color:'#6A4C93', bg:'#F7F3FD', items:temperos});
+
+  // ── 7. BEBIDAS ──
+  const bebidas = [];
+  bebidas.push({n:'Água mineral', q:`${portions(7)} litros (ou filtro em dia)`});
+  bebidas.push({n:'🌿 Chá verde (sachês)', q:'1 caixa', fiber:fiber});
+  bebidas.push({n:'🌿 Chá de gengibre (sachês)', q:'1 caixa', fiber:fiber});
+  bebidas.push({n:'Chá de hibisco (sachês)', q:'1 caixa'});
+  bebidas.push({n:'Água de coco natural', q:qty(portions(2),'unidades')});
+  if (!vegan && p.includes('laticinios') && !lac) {
+    bebidas.push({n:'🌿 Kefir de leite', q:'1 frasco (500ml)', fiber:fiber});
+  }
+
+  cats.push({icon:'💧', name:'Bebidas', color:'#2980B9', bg:'#EBF5FB', items:bebidas});
+
+  // ── 8. EXTRAS / OCASIONAIS ──
+  const extras = [];
+  extras.push({n:'Biomassa de banana verde', q:'1 embalagem'});
+  extras.push({n:'Leite de coco (lata)', q:'1 lata'});
+  if (!state.noSugar) extras.push({n:'Chocolate 70%+ cacau', q:'1 barra'});
+  if (!quick) extras.push({n:'Cogumelo shimeji ou shiitake', q:'1 bandeja'});
+  extras.push({n:'Vinagre de maçã', q:'1 frasco'});
+  if (p.includes('laticinios') && !vegan) extras.push({n:'Queijo cottage', q:'1 pote'});
+
+  cats.push({icon:'🛍️', name:'Extras e Funcionais', color:'#40916C', bg:'#F0FFF4', items:extras});
+
+  return cats;
+}
+
+// ══════════════════════════════════════════
+//              GENERATE UI
+// ══════════════════════════════════════════
+const genMessages = [
+  'Calculando quantidades para sua família...',
+  'Verificando preferências alimentares...',
+  'Priorizando fibras prebióticas...',
+  'Organizando por seção do mercado...',
+  'Quase pronto!'
+];
+
+function generateList() {
+  document.getElementById('screen-form').style.display = 'none';
+  document.getElementById('screen-generating').style.display = 'block';
+  document.getElementById('screen-list').style.display = 'none';
+
+  let msgIdx = 0;
+  const msgEl = document.getElementById('gen-msg');
+  const interval = setInterval(() => {
+    msgEl.textContent = genMessages[msgIdx++ % genMessages.length];
+  }, 520);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    renderList();
+    document.getElementById('screen-generating').style.display = 'none';
+    document.getElementById('screen-list').style.display = 'block';
+    goStep(4);
+    updateStepUI();
+    window.scrollTo(0,0);
+  }, 2600);
+}
+
+function renderList() {
+  checked.clear();
+  const cats = buildList();
+  const totalItems = cats.reduce((s,c) => s + c.items.length, 0);
+
+  // Subtitle
+  const plural = (state.adults + state.children) > 1 ? 'pessoas' : 'pessoa';
+  document.getElementById('list-subtitle').textContent =
+    `${state.adults + state.children} ${plural} · ${totalItems} itens · semana completa`;
+
+  // Tags
+  const tags = [];
+  tags.push(`👥 ${state.adults} adulto${state.adults>1?'s':''}`);
+  if (state.children > 0) tags.push(`👶 ${state.children} criança${state.children>1?'s':''}`);
+  if (state.vegan) tags.push('🌱 Vegano');
+  if (state.noGluten) tags.push('🌾 S/ glúten');
+  if (state.noLactose) tags.push('🥛 S/ lactose');
+  if (state.fiberPriority) tags.push('🌿 Fibras prebióticas');
+  const budgetLabel = {economico:'💰 Econômico',moderado:'💳 Moderado',livre:'✨ Sem restrição'}[state.budget];
+  tags.push(budgetLabel);
+
+  const tagsEl = document.getElementById('list-tags');
+  tagsEl.innerHTML = tags.map((t,i) =>
+    `<div class="list-tag${i===tags.length-1?' gold':''}">${t}</div>`).join('');
+
+  // Categories
+  const container = document.getElementById('list-categories');
+  container.innerHTML = '';
+
+  cats.forEach((cat, ci) => {
+    const block = document.createElement('div');
+    block.className = 'cat-block';
+    block.id = `cat-${ci}`;
+
+    const header = document.createElement('div');
+    header.className = 'cat-header';
+    header.style.background = cat.color;
+    header.style.borderRadius = '8px 8px 0 0';
+    header.innerHTML = `
+      <span class="cat-icon">${cat.icon}</span>
+      <span class="cat-name">${cat.name}</span>
+      <span class="cat-count">${cat.items.length}</span>
+      <span class="cat-toggle-icon">▾</span>
+    `;
+    header.addEventListener('click', () => {
+      block.classList.toggle('collapsed');
+    });
+
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'cat-items';
+
+    cat.items.forEach((item, ii) => {
+      const key = `${ci}-${ii}`;
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.dataset.key = key;
+
+      const isFiber = item.fiber && state.fiberPriority;
+      const nameText = item.n;
+
+      row.innerHTML = `
+        <div class="item-check"></div>
+        <span class="item-name-text">${nameText}</span>
+        <span class="item-qty">${item.q}</span>
+      `;
+
+      if (isFiber) {
+        row.style.borderLeft = '3px solid #40916C';
+      }
+
+      row.addEventListener('click', () => {
+        if (checked.has(key)) {
+          checked.delete(key);
+          row.classList.remove('checked');
+        } else {
+          checked.add(key);
+          row.classList.add('checked');
+        }
+        updateProgress(totalItems);
+      });
+
+      itemsDiv.appendChild(row);
+    });
+
+    block.appendChild(header);
+    block.appendChild(itemsDiv);
+    container.appendChild(block);
+  });
+
+  updateProgress(totalItems);
+}
+
+function updateProgress(total) {
+  const done = checked.size;
+  document.getElementById('prog-frac').textContent = `${done} / ${total}`;
+  document.getElementById('prog-fill').style.width = total > 0 ? (done/total*100)+'%' : '0%';
+}
+
+// ══════════════════════════════════════════
+//              COPY LIST
+// ══════════════════════════════════════════
+function copyList() {
+  const cats = document.querySelectorAll('.cat-block');
+  let text = '🛒 LISTA DE COMPRAS DA SEMANA\n';
+  text += 'Protocolo Fibermaxxing · Dra. Isabella Bianchi\n';
+  text += '─'.repeat(36) + '\n\n';
+
+  cats.forEach(cat => {
+    const name = cat.querySelector('.cat-name').textContent;
+    text += `📌 ${name}\n`;
+    cat.querySelectorAll('.item-row').forEach(row => {
+      const done = row.classList.contains('checked') ? '✓' : '○';
+      const n = row.querySelector('.item-name-text').textContent;
+      const q = row.querySelector('.item-qty').textContent;
+      text += `  ${done} ${n} — ${q}\n`;
+    });
+    text += '\n';
+  });
+
+  text += '─'.repeat(36) + '\n';
+  text += 'isabellabianchi.com.br\n';
+  text += '🌿 Priorize os itens marcados com 🌿 — são as fibras prebióticas do protocolo!\n';
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.action-copy');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.innerHTML = '📋 Copiar lista', 2000);
+  });
+}
+
+// ══════════════════════════════════════════
+//              RESET
+// ══════════════════════════════════════════
+function resetForm() {
+  document.getElementById('screen-list').style.display = 'none';
+  document.getElementById('screen-form').style.display = 'block';
+  [1,2,3].forEach(i => {
+    document.getElementById(`form-step${i}`).style.display = i===1?'block':'none';
+  });
+  currentStep = 1;
+  updateStepUI();
+  window.scrollTo(0,0);
+}
+
+// init
+updateStepUI();
+</script>
+</body>
+</html>
