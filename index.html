@@ -226,12 +226,12 @@ main{max-width:680px;margin:0 auto;padding:32px 20px 60px}
    precisa estar "visível" para o html2canvas conseguir
    capturar o conteúdo corretamente)
    ══════════════════════════════════════════ */
-#pdf-export{position:fixed;inset:0;background:rgba(10,30,20,.6);z-index:99999;display:none;overflow:auto;padding:70px 16px 40px}
+#pdf-export{position:fixed;inset:0;background:rgba(10,30,20,.6);z-index:99999;display:none;padding:70px 16px 40px}
 #pdf-export.active{display:block}
 #pdf-export-banner{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px;z-index:2;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 #pdf-export-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
-#pdf-page-wrap{display:flex;justify-content:center}
-#pdf-page-wrap .pdf-page{box-shadow:0 10px 40px rgba(0,0,0,.3);border-radius:10px;overflow:hidden}
+#pdf-page-wrap{width:100%}
+#pdf-page-wrap .pdf-page{margin:0 auto;box-shadow:0 10px 40px rgba(0,0,0,.3);border-radius:10px;overflow:hidden}
 
 .pdf-page{width:760px;background:#fff;font-family:'Segoe UI',Arial,sans-serif;color:var(--text);padding:4px}
 
@@ -1040,7 +1040,7 @@ function downloadPDF() {
     margin: [10, 8, 12, 8],
     filename: 'lista-de-compras-fibermaxxing.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
