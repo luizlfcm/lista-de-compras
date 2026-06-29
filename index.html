@@ -222,7 +222,7 @@ main{max-width:680px;margin:0 auto;padding:32px 20px 60px}
 
 /* ══════════════════════════════════════════
    PDF EXPORT TEMPLATE (renderizado em um overlay
-   visível e convertido para PDF pelo html2pdf.js —
+   visível e convertido para PDF com html2canvas + jsPDF —
    precisa estar "visível" para o html2canvas conseguir
    capturar o conteúdo corretamente)
    ══════════════════════════════════════════ */
@@ -517,7 +517,8 @@ main{max-width:680px;margin:0 auto;padding:32px 20px 60px}
   <div id="pdf-page-wrap"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
 // ══════════════════════════════════════════
@@ -1024,7 +1025,21 @@ function buildPdfHTML() {
     </div>`;
 }
 
-function downloadPDF() {
+// Calcula, em px de canvas (já multiplicados pela escala usada no html2canvas),
+// os pontos onde é seguro cortar a página — sempre no início de uma linha de
+// item ou de uma categoria, nunca no meio de um texto.
+function getPdfBreakpoints(pageEl, scale) {
+  const pageTop = pageEl.getBoundingClientRect().top;
+  const totalHeightPx = Math.round(pageEl.getBoundingClientRect().height * scale);
+  const points = new Set([0, totalHeightPx]);
+  pageEl.querySelectorAll('.pdf-cat, .pdf-item-row').forEach(el => {
+    const top = el.getBoundingClientRect().top - pageTop;
+    points.add(Math.round(top * scale));
+  });
+  return Array.from(points).sort((a, b) => a - b);
+}
+
+async function downloadPDF() {
   const btn = document.getElementById('btn-download-pdf');
   const originalLabel = btn.innerHTML;
   btn.innerHTML = '⏳ Gerando PDF...';
@@ -1034,15 +1049,6 @@ function downloadPDF() {
   const wrap = document.getElementById('pdf-page-wrap');
   wrap.innerHTML = buildPdfHTML();
   overlay.classList.add('active');
-  overlay.scrollTop = 0;
-
-  const opt = {
-    margin: [10, 8, 12, 8],
-    filename: 'lista-de-compras-fibermaxxing.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  };
 
   function finish() {
     overlay.classList.remove('active');
@@ -1053,17 +1059,75 @@ function downloadPDF() {
 
   // Espera dois frames para garantir que o navegador já pintou
   // o conteúdo na tela antes do html2canvas capturá-lo.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      html2pdf().set(opt).from(wrap.firstElementChild).save()
-        .then(finish)
-        .catch(err => {
-          console.error(err);
-          alert('Não foi possível gerar o PDF agora. Tente novamente em alguns segundos.');
-          finish();
-        });
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  const pageEl = wrap.firstElementChild;
+  const scale = 2;
+
+  try {
+    const canvas = await html2canvas(pageEl, {
+      scale: scale,
+      useCORS: true,
+      backgroundColor: '#ffffff'
     });
-  });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+    const marginMM = 8;
+    const pageWidthMM = pdf.internal.pageSize.getWidth();
+    const pageHeightMM = pdf.internal.pageSize.getHeight();
+    const contentWidthMM = pageWidthMM - marginMM * 2;
+    const usableHeightMM = pageHeightMM - marginMM * 2;
+
+    // Fator de conversão px (do canvas) -> mm (no PDF), calculado pela LARGURA,
+    // garantindo que o conteúdo nunca seja mais largo que a área útil da página.
+    const pxToMM = contentWidthMM / canvas.width;
+    const pageHeightPx = usableHeightMM / pxToMM;
+
+    const breakpoints = getPdfBreakpoints(pageEl, scale);
+
+    let cursor = 0;
+    let firstPage = true;
+
+    while (cursor < canvas.height - 1) {
+      const idealEnd = Math.min(cursor + pageHeightPx, canvas.height);
+      let cut = idealEnd;
+
+      // procura o ponto de corte seguro mais próximo do final ideal da página
+      for (let i = breakpoints.length - 1; i >= 0; i--) {
+        if (breakpoints[i] <= idealEnd + 1 && breakpoints[i] > cursor + 1) {
+          cut = breakpoints[i];
+          break;
+        }
+      }
+      if (cut <= cursor) cut = idealEnd;
+
+      const sliceHeightPx = Math.max(1, Math.round(cut - cursor));
+
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeightPx;
+      const ctx = sliceCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(canvas, 0, cursor, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+      const imgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+      if (!firstPage) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', marginMM, marginMM, contentWidthMM, sliceHeightPx * pxToMM);
+
+      cursor += sliceHeightPx;
+      firstPage = false;
+    }
+
+    pdf.save('lista-de-compras-fibermaxxing.pdf');
+    finish();
+  } catch (err) {
+    console.error(err);
+    alert('Não foi possível gerar o PDF agora. Tente novamente em alguns segundos.');
+    finish();
+  }
 }
 
 // ══════════════════════════════════════════
